@@ -1,0 +1,1731 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HCM Lite</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg1:#070b2a; --bg2:#151a5c; --accent:#7c6cff; --accent-dark:#4132c9;
+  --cyan:#00d2ff; --pink:#ff4fa3; --green:#2bf5a0; --red:#ff5470; --amber:#ffb347;
+  --text:#eef1ff; --muted:#a9b0d8;
+  --glass:rgba(255,255,255,.07); --glass-b:rgba(255,255,255,.2);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0; padding:22px; min-height:100vh; color:var(--text);
+  font-family:'Poppins','Segoe UI',Arial,sans-serif;
+  background:radial-gradient(circle at 20% 10%,#2a2f9a 0%,transparent 45%),
+             radial-gradient(circle at 85% 80%,#6a1b9a 0%,transparent 40%),
+             linear-gradient(160deg,var(--bg1),var(--bg2));
+  background-attachment:fixed; overflow-x:hidden;
+}
+
+/* ===================== 3D BACKGROUND SCENE ===================== */
+#scene{position:fixed;inset:0;z-index:0;overflow:hidden;pointer-events:none;perspective:900px}
+.orb{position:absolute;border-radius:50%;filter:blur(60px);opacity:.55;animation:orbFloat 14s ease-in-out infinite alternate}
+.orb.o1{width:340px;height:340px;background:#5b3df5;left:-80px;top:8%}
+.orb.o2{width:300px;height:300px;background:#00b4ff;right:-60px;top:35%;animation-delay:-5s}
+.orb.o3{width:260px;height:260px;background:#ff3d9a;left:40%;bottom:5%;animation-delay:-9s}
+@keyframes orbFloat{from{transform:translate3d(0,0,0) scale(1)}to{transform:translate3d(60px,-50px,0) scale(1.25)}}
+
+.floor{
+  position:absolute;left:-60%;width:220%;height:75%;bottom:-38%;
+  background-image:linear-gradient(rgba(0,210,255,.4) 1px,transparent 1px),linear-gradient(90deg,rgba(0,210,255,.4) 1px,transparent 1px);
+  background-size:64px 64px; transform:rotateX(72deg); transform-origin:center bottom;
+  animation:grid 3s linear infinite;
+  -webkit-mask-image:linear-gradient(to top,#000 25%,transparent 90%); mask-image:linear-gradient(to top,#000 25%,transparent 90%);
+}
+@keyframes grid{to{background-position:0 64px}}
+
+#skyline{position:absolute;left:0;right:0;bottom:28%;display:flex;align-items:flex-end;justify-content:space-around;opacity:.5}
+.bld{position:relative;background:linear-gradient(180deg,#26359a,#0c1240);border:1px solid rgba(0,210,255,.35);border-bottom:none;box-shadow:0 0 25px rgba(0,210,255,.2)}
+.bld::before{content:'';position:absolute;inset:8px 6px;background:repeating-linear-gradient(0deg,rgba(255,225,130,.9) 0 6px,transparent 6px 16px);animation:blink 4s ease-in-out infinite;animation-delay:inherit}
+.bld::after{content:'';position:absolute;inset:8px 6px;background:repeating-linear-gradient(90deg,transparent 0 6px,#0e1550 6px 14px)}
+@keyframes blink{0%,100%{opacity:.9}50%{opacity:.25}}
+
+#cubes,#props{position:absolute;inset:0;perspective:800px;transition:transform .25s ease-out}
+#cubes{transform:translate3d(calc(var(--mx,0)*-25px),calc(var(--my,0)*-25px),0)}
+#props{transform:translate3d(calc(var(--mx,0)*35px),calc(var(--my,0)*35px),0)}
+.cube-wrap{position:absolute;animation:floaty var(--f,9s) ease-in-out infinite alternate}
+@keyframes floaty{from{transform:translateY(-25px)}to{transform:translateY(35px)}}
+.cube,.logo3d{position:relative;width:var(--s);height:var(--s);transform-style:preserve-3d;animation:tumble var(--d,14s) linear infinite}
+@keyframes tumble{from{transform:rotateX(0) rotateY(0) rotateZ(0)}to{transform:rotateX(360deg) rotateY(720deg) rotateZ(360deg)}}
+@keyframes spinY{from{transform:rotateX(-22deg) rotateY(0)}to{transform:rotateX(-22deg) rotateY(360deg)}}
+.cube i,.logo3d i{position:absolute;inset:0;border:1px solid rgba(255,255,255,.45);background:linear-gradient(135deg,rgba(124,108,255,.35),rgba(0,210,255,.18));box-shadow:inset 0 0 14px rgba(255,255,255,.25)}
+.cube i:nth-child(1),.logo3d i:nth-child(1){transform:translateZ(calc(var(--s)/2))}
+.cube i:nth-child(2),.logo3d i:nth-child(2){transform:rotateY(180deg) translateZ(calc(var(--s)/2))}
+.cube i:nth-child(3),.logo3d i:nth-child(3){transform:rotateY(90deg) translateZ(calc(var(--s)/2))}
+.cube i:nth-child(4),.logo3d i:nth-child(4){transform:rotateY(-90deg) translateZ(calc(var(--s)/2))}
+.cube i:nth-child(5),.logo3d i:nth-child(5){transform:rotateX(90deg) translateZ(calc(var(--s)/2))}
+.cube i:nth-child(6),.logo3d i:nth-child(6){transform:rotateX(-90deg) translateZ(calc(var(--s)/2))}
+.prop{position:absolute;filter:drop-shadow(0 12px 14px rgba(0,0,0,.5));opacity:.65;animation:drift var(--f,12s) ease-in-out infinite alternate}
+@keyframes drift{from{transform:translate3d(-20px,10px,0) rotate(-12deg) scale(.95)}to{transform:translate3d(30px,-40px,60px) rotate(14deg) scale(1.1)}}
+
+/* ===================== VIEWS ===================== */
+.view{display:none;position:relative;z-index:2;max-width:1250px;margin:0 auto 40px auto}
+.view.active{display:block;animation:viewIn .7s cubic-bezier(.2,.8,.2,1)}
+@keyframes viewIn{from{opacity:0;transform:perspective(1000px) rotateX(12deg) translateY(30px)}}
+
+/* top bar */
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:15px;padding:16px 24px;margin-bottom:26px;border-radius:20px;
+  background:linear-gradient(135deg,rgba(124,108,255,.35),rgba(0,210,255,.18));border:1px solid var(--glass-b);
+  backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  box-shadow:0 8px 0 -2px rgba(20,16,90,.7),0 25px 45px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.35);
+  animation:topIn .9s cubic-bezier(.2,.8,.2,1) both}
+@keyframes topIn{from{opacity:0;transform:perspective(900px) rotateX(-30deg) translateY(-40px)}}
+.brand{display:flex;align-items:center;gap:18px;perspective:300px}
+.brand h2{margin:0;font-size:24px;font-weight:700;letter-spacing:.5px;text-shadow:0 3px 0 rgba(0,0,0,.35),0 0 22px rgba(0,210,255,.6)}
+.logo3d{--s:30px;margin:6px 8px;animation:spinY 7s linear infinite}
+
+/* card grid */
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(360px,1fr));gap:26px;perspective:1400px}
+.card{
+  position:relative;padding:22px 24px 24px;border-radius:22px;
+  background:linear-gradient(145deg,rgba(255,255,255,.12),rgba(255,255,255,.03));
+  border:1px solid var(--glass-b);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+  box-shadow:0 10px 0 -3px rgba(18,14,80,.65),0 28px 50px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.3);
+  transform:perspective(1000px) rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg));
+  transition:transform .18s ease-out,box-shadow .3s;
+  animation:cardIn .9s cubic-bezier(.2,.8,.2,1) backwards;animation-delay:calc(var(--n,0)*90ms + 250ms);
+  overflow:hidden;
+}
+.card::before{content:'';position:absolute;top:0;left:-120%;width:60%;height:100%;
+  background:linear-gradient(100deg,transparent,rgba(255,255,255,.14),transparent);transform:skewX(-20deg);animation:shine 6s ease-in-out infinite;animation-delay:calc(var(--n,0)*.7s)}
+@keyframes shine{0%,60%{left:-120%}100%{left:160%}}
+@keyframes cardIn{from{opacity:0;transform:perspective(1000px) rotateX(-40deg) rotateY(15deg) translateY(60px) translateZ(-120px)}}
+.card:hover{box-shadow:0 14px 0 -3px rgba(18,14,80,.65),0 40px 70px rgba(0,0,0,.55),0 0 35px rgba(0,210,255,.25),inset 0 1px 0 rgba(255,255,255,.4)}
+.card.wide{grid-column:1/-1}
+.card h3{margin:0 0 16px 0;font-size:17px;font-weight:600;display:flex;align-items:center;gap:12px;clear:both}
+.ico{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:12px;font-size:20px;
+  background:linear-gradient(145deg,var(--accent),var(--cyan));box-shadow:0 5px 0 var(--accent-dark),0 10px 18px rgba(0,0,0,.4);animation:bob 3s ease-in-out infinite}
+@keyframes bob{50%{transform:translateY(-4px) rotate(-4deg)}}
+.card label{display:block;color:var(--muted);font-size:13px;margin:4px 0}
+
+/* inputs */
+input,select,textarea{display:block;width:100%;margin-bottom:12px;padding:12px 14px;border-radius:12px;color:var(--text);font:inherit;font-size:14px;
+  background:rgba(8,10,50,.55);border:1px solid rgba(255,255,255,.2);outline:none;color-scheme:dark;
+  box-shadow:inset 0 3px 8px rgba(0,0,0,.45);transition:.25s}
+input::placeholder,textarea::placeholder{color:#8088b8}
+input:focus,select:focus,textarea:focus{border-color:var(--cyan);box-shadow:inset 0 3px 8px rgba(0,0,0,.45),0 0 0 3px rgba(0,210,255,.25),0 0 20px rgba(0,210,255,.35);transform:translateZ(0) translateY(-2px)}
+select option{color:#111;background:#fff}
+textarea{min-height:80px;resize:vertical}
+
+/* 3D buttons */
+button{font:inherit;font-size:14px;font-weight:600;color:#fff;cursor:pointer;margin:5px 8px 5px 0;padding:11px 20px;border:none;border-radius:12px;
+  background:linear-gradient(180deg,#8b7dff,var(--accent));
+  box-shadow:0 6px 0 var(--accent-dark),0 12px 20px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.45);
+  transition:transform .12s,box-shadow .12s,filter .2s;position:relative;top:0}
+button:hover{transform:translateY(-3px);filter:brightness(1.12);box-shadow:0 9px 0 var(--accent-dark),0 18px 26px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.45)}
+button:active{transform:translateY(5px);box-shadow:0 1px 0 var(--accent-dark),0 3px 6px rgba(0,0,0,.4)}
+.logout-btn{margin:0;background:linear-gradient(180deg,#ff6f86,var(--red));box-shadow:0 6px 0 #a3203a,0 12px 20px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.4)}
+.logout-btn:hover{box-shadow:0 9px 0 #a3203a,0 18px 26px rgba(0,0,0,.45)}
+.logout-btn:active{box-shadow:0 1px 0 #a3203a}
+.check-btn{font-size:18px;font-weight:700;padding:22px 34px;border-radius:16px;letter-spacing:1px}
+.check-btn.in{background:linear-gradient(180deg,#3dffb0,#12b86e);box-shadow:0 8px 0 #0a7a49,0 16px 26px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.5);animation:pulseGreen 2.4s infinite}
+.check-btn.out{background:linear-gradient(180deg,#ff7f6b,#d93a3a);box-shadow:0 8px 0 #8a1c1c,0 16px 26px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.4)}
+.check-btn:hover{transform:translateY(-4px) scale(1.04)}
+.check-btn:active{transform:translateY(6px)}
+@keyframes pulseGreen{50%{filter:drop-shadow(0 0 16px rgba(43,245,160,.8))}}
+.box button{padding:7px 12px;font-size:12px;border-radius:9px;box-shadow:0 4px 0 var(--accent-dark),0 8px 12px rgba(0,0,0,.35)}
+.box button:hover{box-shadow:0 6px 0 var(--accent-dark),0 12px 16px rgba(0,0,0,.4)}
+.box button:active{box-shadow:0 1px 0 var(--accent-dark)}
+
+/* content boxes */
+.box{margin-top:12px;padding:14px;border-radius:14px;background:rgba(6,8,40,.45);border:1px solid rgba(255,255,255,.14);
+  box-shadow:inset 0 4px 14px rgba(0,0,0,.4);color:var(--text);font-size:14px;overflow-x:auto}
+.box p{margin:5px 0}
+.box h4{margin:12px 0 8px;color:var(--cyan);font-weight:600}
+.box.list>div{background:linear-gradient(145deg,rgba(255,255,255,.09),rgba(255,255,255,.02));border-radius:12px;padding:12px 16px;margin-bottom:12px;
+  border-left:4px solid var(--cyan);box-shadow:0 6px 0 -2px rgba(0,0,0,.35),0 12px 20px rgba(0,0,0,.25);animation:slideIn .6s cubic-bezier(.2,.8,.2,1) backwards;transition:transform .25s}
+.box.list>div:hover{transform:translateX(8px) translateZ(10px)}
+.box.list>div:nth-child(2){animation-delay:.08s}.box.list>div:nth-child(3){animation-delay:.16s}.box.list>div:nth-child(4){animation-delay:.24s}.box.list>div:nth-child(5){animation-delay:.32s}
+@keyframes slideIn{from{opacity:0;transform:perspective(600px) rotateY(-25deg) translateX(-30px)}}
+hr{border:none;height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.3),transparent);margin:10px 0}
+small{color:var(--muted)}
+
+/* tables */
+table{width:100%;border-collapse:separate;border-spacing:0 6px;margin-top:6px;font-size:13px}
+th{padding:10px;text-align:left;color:var(--cyan);font-weight:600;background:rgba(124,108,255,.25);text-transform:uppercase;font-size:11px;letter-spacing:.8px}
+th:first-child{border-radius:10px 0 0 10px}th:last-child{border-radius:0 10px 10px 0}
+td{padding:10px;text-align:left;background:rgba(255,255,255,.06);border:none}
+td:first-child{border-radius:10px 0 0 10px}td:last-child{border-radius:0 10px 10px 0}
+tr{transition:transform .2s}
+tr:hover td{background:rgba(0,210,255,.18)}
+tr:hover{transform:translateZ(12px) scale(1.01)}
+.ok{color:var(--green);font-weight:700;text-shadow:0 0 10px rgba(43,245,160,.5)}
+.bad{color:var(--red);font-weight:700;text-shadow:0 0 10px rgba(255,84,112,.5)}
+.wait{color:var(--amber);font-weight:700;text-shadow:0 0 10px rgba(255,179,71,.5)}
+
+/* KPIs & bars */
+.kpis{display:flex;flex-wrap:wrap;gap:16px;margin-bottom:15px;perspective:900px}
+.kpi{flex:1;min-width:140px;padding:16px;border-radius:16px;
+  background:linear-gradient(145deg,rgba(124,108,255,.5),rgba(0,210,255,.25));border:1px solid rgba(255,255,255,.28);
+  box-shadow:0 8px 0 -2px rgba(18,14,80,.7),0 18px 28px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.4);
+  transform-style:preserve-3d;transition:transform .3s;animation:kpiIn .8s cubic-bezier(.2,.8,.2,1) backwards}
+.kpi:nth-child(2){animation-delay:.08s}.kpi:nth-child(3){animation-delay:.16s}.kpi:nth-child(4){animation-delay:.24s}.kpi:nth-child(5){animation-delay:.32s}.kpi:nth-child(6){animation-delay:.4s}.kpi:nth-child(7){animation-delay:.48s}
+@keyframes kpiIn{from{opacity:0;transform:rotateY(90deg) translateZ(-60px)}}
+.kpi:hover{transform:rotateX(10deg) rotateY(-14deg) translateZ(25px)}
+.kpi-val{font-size:24px;font-weight:700;transform:translateZ(30px);text-shadow:0 4px 0 rgba(0,0,0,.3),0 0 18px rgba(0,210,255,.7)}
+.kpi div:last-child{color:var(--muted);font-size:12px;transform:translateZ(15px)}
+.bar{height:12px;margin:4px 0 12px 0;border-radius:8px;background:linear-gradient(90deg,var(--cyan),var(--accent),var(--pink));
+  box-shadow:0 4px 0 var(--accent-dark),0 8px 14px rgba(0,210,255,.4);transform-origin:left;animation:grow 1.1s cubic-bezier(.2,.8,.2,1) backwards}
+@keyframes grow{from{transform:scaleX(0)}}
+.filters{margin-bottom:12px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;color:var(--muted);font-size:13px}
+.filters input,.filters select,.filters button{display:inline-block;width:auto;margin:0}
+
+/* ===================== LOGIN ===================== */
+#login-view{max-width:1150px}
+.login-wrap{display:grid;grid-template-columns:1.15fr 1fr;gap:30px;align-items:center;min-height:86vh}
+.hero{text-align:center}
+.badge{display:inline-block;padding:6px 16px;border-radius:30px;font-size:13px;background:rgba(255,255,255,.1);border:1px solid var(--glass-b);animation:bob 3s ease-in-out infinite}
+.hero h1{font-size:68px;font-weight:800;margin:14px 0 6px;letter-spacing:2px;
+  text-shadow:0 2px 0 #4a3de0,0 4px 0 #3a2eb0,0 6px 0 #2d2390,0 8px 0 #221a70,0 14px 24px rgba(0,0,0,.5);animation:titleFloat 4s ease-in-out infinite}
+.hero h1 span{background:linear-gradient(90deg,var(--cyan),var(--pink));-webkit-background-clip:text;background-clip:text;color:transparent;text-shadow:none;filter:drop-shadow(0 4px 0 #221a70)}
+@keyframes titleFloat{50%{transform:translateY(-8px) rotateX(8deg)}}
+.hero p{color:var(--muted);max-width:480px;margin:0 auto}
+.stage{position:relative;height:460px;perspective:1200px;display:flex;align-items:center;justify-content:center}
+#hero-inner{position:relative;width:150px;height:150px;transform-style:preserve-3d;
+  transform:rotateX(calc(-16deg + var(--rx,0deg))) rotateY(var(--ry,0deg));transition:transform .25s ease-out}
+.bigcube{position:absolute;inset:0;transform-style:preserve-3d;animation:spinY 16s linear infinite}
+.bigcube .f{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:52px;gap:2px;
+  border:2px solid rgba(255,255,255,.45);background:linear-gradient(135deg,rgba(124,108,255,.8),rgba(0,210,255,.55));
+  box-shadow:inset 0 0 35px rgba(255,255,255,.3),0 0 35px rgba(0,210,255,.45)}
+.bigcube .f small{font-size:12px;color:#fff;font-weight:600;letter-spacing:1px}
+.bigcube .f:nth-child(1){transform:translateZ(75px)}
+.bigcube .f:nth-child(2){transform:rotateY(180deg) translateZ(75px)}
+.bigcube .f:nth-child(3){transform:rotateY(90deg) translateZ(75px)}
+.bigcube .f:nth-child(4){transform:rotateY(-90deg) translateZ(75px)}
+.bigcube .f:nth-child(5){transform:rotateX(90deg) translateZ(75px)}
+.bigcube .f:nth-child(6){transform:rotateX(-90deg) translateZ(75px)}
+.orbit{position:absolute;inset:0;transform-style:preserve-3d;animation:spinOrbit 20s linear infinite reverse}
+@keyframes spinOrbit{to{transform:rotateY(360deg)}}
+.tile{position:absolute;left:50%;top:50%;width:84px;height:84px;margin:-42px;display:flex;align-items:center;justify-content:center;font-size:38px;border-radius:20px;
+  background:linear-gradient(145deg,rgba(255,255,255,.28),rgba(255,255,255,.06));border:1px solid rgba(255,255,255,.5);backface-visibility:hidden;
+  box-shadow:0 10px 24px rgba(0,0,0,.45),inset 0 0 20px rgba(255,255,255,.2);
+  transform:rotateY(calc(var(--i)*60deg)) translateZ(240px)}
+.ring{position:absolute;left:50%;top:50%;width:480px;height:480px;margin:-240px;border-radius:50%;border:2px dashed rgba(0,210,255,.6);
+  transform:rotateX(90deg);box-shadow:0 0 30px rgba(0,210,255,.4),inset 0 0 30px rgba(0,210,255,.3);animation:ringSpin 12s linear infinite}
+@keyframes ringSpin{to{transform:rotateX(90deg) rotateZ(360deg)}}
+.platform{position:absolute;left:50%;top:50%;width:360px;height:360px;margin:-180px;border-radius:50%;transform:rotateX(90deg) translateZ(-130px);
+  background:radial-gradient(circle,rgba(0,210,255,.55),rgba(124,108,255,.25) 50%,transparent 70%);animation:pulsePlat 3s ease-in-out infinite}
+@keyframes pulsePlat{50%{opacity:.5;transform:rotateX(90deg) translateZ(-130px) scale(1.15)}}
+.login-card{padding:34px 34px 30px;animation:loginIn 1.1s cubic-bezier(.2,.8,.2,1) backwards .3s}
+@keyframes loginIn{from{opacity:0;transform:perspective(1000px) rotateY(-55deg) translateX(80px)}}
+.login-card h2{margin:0 0 4px;font-size:28px;font-weight:700}
+.login-card .sub{color:var(--muted);margin:0 0 22px;font-size:14px}
+.login-card button{width:100%;margin:8px 0 0;padding:15px;font-size:16px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:16px}
+.chips span{padding:5px 12px;border-radius:20px;font-size:12px;background:rgba(255,255,255,.08);border:1px solid var(--glass-b);animation:bob 4s ease-in-out infinite}
+.chips span:nth-child(2n){animation-delay:-1s}.chips span:nth-child(3n){animation-delay:-2s}
+
+@media (max-width:900px){
+  body{padding:12px}
+  .login-wrap{grid-template-columns:1fr;min-height:auto}
+  .stage{height:360px;transform:scale(.7);margin:-40px 0}
+  .hero h1{font-size:46px}
+  .grid{grid-template-columns:1fr}
+  .topbar{flex-direction:row;padding:12px 16px}
+  .brand h2{font-size:18px}
+}
+@media (prefers-reduced-motion:reduce){*{animation-duration:.01s!important;animation-iteration-count:1!important}}
+</style>
+</head>
+<body>
+
+<!-- Animated 3D background -->
+<div id="scene">
+  <div class="orb o1"></div><div class="orb o2"></div><div class="orb o3"></div>
+  <div id="skyline"></div>
+  <div class="floor"></div>
+  <div id="cubes"></div>
+  <div id="props"></div>
+</div>
+
+<!-- ===================== LOGIN ===================== -->
+<div id="login-view" class="view active">
+  <div class="login-wrap">
+    <div class="hero">
+      <span class="badge">🏢 Smart Workplace Portal</span>
+      <h1>HCM <span>Lite</span></h1>
+      <p>Attendance, leave, payroll and people — your whole office, in one place.</p>
+      <div class="stage">
+        <div class="platform"></div>
+        <div id="hero-inner">
+          <div class="ring"></div>
+          <div class="orbit">
+            <div class="tile" style="--i:0">💼</div>
+            <div class="tile" style="--i:1">🖥️</div>
+            <div class="tile" style="--i:2">☕</div>
+            <div class="tile" style="--i:3">📁</div>
+            <div class="tile" style="--i:4">🗓️</div>
+            <div class="tile" style="--i:5">📎</div>
+          </div>
+          <div class="bigcube">
+            <div class="f">👥<small>PEOPLE</small></div>
+            <div class="f">💰<small>PAYROLL</small></div>
+            <div class="f">📅<small>ATTENDANCE</small></div>
+            <div class="f">🌴<small>LEAVE</small></div>
+            <div class="f">📊<small>ANALYTICS</small></div>
+            <div class="f">📢<small>NEWS</small></div>
+          </div>
+        </div>
+      </div>
+      <div class="chips"><span>⏱️ Check in / out</span><span>🌴 Leave requests</span><span>💳 Payslips</span><span>📊 Live analytics</span></div>
+    </div>
+
+    <div class="card login-card">
+      <h2>Welcome back 👋</h2>
+      <p class="sub">Sign in to your HCM Lite workspace</p>
+      <input type="email" id="login-email" placeholder="Email">
+      <input type="password" id="login-password" placeholder="Password">
+      <button onclick="login()">🚀 Login</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== ADMIN ===================== -->
+<div id="admin-view" class="view">
+  <div class="topbar">
+    <div class="brand"><div class="logo3d"></div><h2>Admin Dashboard</h2></div>
+    <button class="logout-btn" onclick="logout()">Logout</button>
+  </div>
+
+  <div class="grid">
+    <section class="card">
+      <h3><span class="ico">👤</span> Create HR Account</h3>
+      <input type="email" id="hr-email" placeholder="HR Email">
+      <input type="password" id="hr-password" placeholder="HR Password">
+      <button onclick="createHR()">Create HR</button>
+    </section>
+
+    <section class="card">
+      <h3><span class="ico">📢</span> Post Announcement</h3>
+      <input type="text" id="admin-ann-title" placeholder="Announcement Title">
+      <textarea id="admin-ann-message" placeholder="Announcement Message"></textarea>
+      <button onclick="postAnnouncement('admin')">Post Announcement</button>
+    </section>
+
+    <section class="card wide">
+      <h3><span class="ico">💰</span> Payroll Management</h3>
+      <button onclick="loadAdminPayroll()">View Payroll Runs</button>
+      <div id="admin-payroll-runs" class="box list"></div>
+    </section>
+
+    <section class="card wide">
+      <h3><span class="ico">📊</span> Analytics</h3>
+      <div class="filters">
+        From <input type="date" id="admin-from">
+        To <input type="date" id="admin-to">
+        Department <select id="admin-dept"><option value="">All departments</option></select>
+        <button onclick="loadAdminDashboard()">Apply</button>
+      </div>
+      <div id="admin-kpis" class="box">Click Apply to load</div>
+      <div id="admin-charts" class="box"></div>
+    </section>
+
+    <section class="card">
+      <h3><span class="ico">📰</span> Announcements</h3>
+      <button onclick="loadAnnouncements('admin')">Refresh Announcements</button>
+      <div id="admin-announcements" class="box list"></div>
+    </section>
+
+    <section class="card">
+      <h3><span class="ico">🔔</span> My Notifications</h3>
+      <button onclick="loadNotifications('admin')">Refresh Notifications</button>
+      <div id="admin-notifications" class="box list"></div>
+    </section>
+
+    <section class="card wide">
+      <h3><span class="ico">🛡️</span> Audit Logs</h3>
+      <button onclick="loadAuditLogs()">View Audit Logs</button>
+      <div id="audit-logs" class="box list"></div>
+    </section>
+  </div>
+</div>
+
+<!-- ===================== HR ===================== -->
+<div id="hr-view" class="view">
+  <div class="topbar">
+    <div class="brand"><div class="logo3d"></div><h2>HR Dashboard</h2></div>
+    <button class="logout-btn" onclick="logout()">Logout</button>
+  </div>
+
+  <div class="grid">
+    <section class="card">
+      <h3><span class="ico">🧑‍💼</span> Register Employee</h3>
+      <input type="text" id="emp-name" placeholder="Full Name">
+      <input type="email" id="emp-email" placeholder="Employee Email">
+      <input type="text" id="emp-dept" placeholder="Department">
+      <input type="text" id="emp-desig" placeholder="Designation">
+      <input type="number" id="emp-salary" placeholder="Basic Salary">
+      <button onclick="registerEmployee()">Register Employee</button>
+    </section>
+
+    <section class="card">
+      <h3><span class="ico">📢</span> Post Announcement</h3>
+      <input type="text" id="hr-ann-title" placeholder="Announcement Title">
+      <textarea id="hr-ann-message" placeholder="Announcement Message"></textarea>
+      <button onclick="postAnnouncement('hr')">Post Announcement</button>
+    </section>
+
+    <section class="card wide">
+      <h3><span class="ico">🌴</span> Pending Leave Requests</h3>
+      <button onclick="loadPendingLeaves()">Refresh Pending Leaves</button>
+      <div id="pending-leaves" class="box">Click refresh</div>
+    </section>
+
+    <section class="card wide">
+      <h3><span class="ico">🕘</span> Today Attendance Board</h3>
+      <button onclick="loadTodayBoard()">Refresh Today</button>
+      <div id="today-board" class="box">Board will show here</div>
+    </section>
+
+    <section class="card wide">
+      <h3><span class="ico">✏️</span> Pending Attendance Corrections</h3>
+      <button onclick="loadCorrections()">Refresh Corrections</button>
+      <div id="pending-corrections" class="box">Corrections will show here</div>
+    </section>
+
+    <section class="card wide">
+      <h3><span class="ico">💳</span> Monthly Payroll</h3>
+      <label>Select Payroll Month:</label>
+      <input type="month" id="payroll-month" style="max-width:260px">
+      <button onclick="generatePayroll()">Generate Payroll</button>
+      <button onclick="loadPayrollRuns()">View Payroll Runs</button>
+      <div id="hr-payroll-runs" class="box list"></div>
+    </section>
+
+    <section class="card wide">
+      <h3><span class="ico">📊</span> HR Analytics</h3>
+      <div class="filters">
+        From <input type="date" id="hr-from">
+        To <input type="date" id="hr-to">
+        Department <select id="hr-dept"><option value="">All departments</option></select>
+        <button onclick="loadHrDashboard()">Apply</button>
+      </div>
+      <div id="hr-kpis" class="box">Click Apply to load</div>
+      <div id="hr-charts" class="box"></div>
+    </section>
+
+    <section class="card">
+      <h3><span class="ico">📰</span> Announcements</h3>
+      <button onclick="loadAnnouncements('hr')">Refresh Announcements</button>
+      <div id="hr-announcements" class="box list"></div>
+    </section>
+
+    <section class="card">
+      <h3><span class="ico">🔔</span> My Notifications</h3>
+      <button onclick="loadNotifications('hr')">Refresh Notifications</button>
+      <div id="hr-notifications" class="box list"></div>
+    </section>
+  </div>
+</div>
+
+<!-- ===================== EMPLOYEE ===================== -->
+<div id="employee-view" class="view">
+  <div class="topbar">
+    <div class="brand"><div class="logo3d"></div><h2>Employee Dashboard</h2></div>
+    <button class="logout-btn" onclick="logout()">Logout</button>
+  </div>
+
+  <div class="grid">
+    <section class="card">
+      <h3><span class="ico">⏱️</span> Daily Attendance</h3>
+      <button class="check-btn in" onclick="attendance('check-in')">CHECK IN</button>
+      <button class="check-btn out" onclick="attendance('check-out')">CHECK OUT</button>
+    </section>
+
+    <section class="card">
+      <h3><span class="ico">🌴</span> Apply for Leave</h3>
+      <select id="leave-type">
+        <option value="Casual">Casual</option>
+        <option value="Sick">Sick</option>
+        <option value="Annual">Annual</option>
+      </select>
+      <input type="date" id="leave-start">
+      <input type="date" id="leave-end">
+      <textarea id="leave-reason" placeholder="Reason"></textarea>
+      <button onclick="applyLeave()">Submit Leave</button>
+    </section>
+
+    <section class="card wide">
+      <h3><span class="ico">🗂️</span> My Leave Balance &amp; History</h3>
+      <button onclick="loadMyLeaves()">Refresh My Leaves</button>
+      <div id="my-balance" class="box">Balance will show here</div>
+      <div id="my-leaves" class="box">History will show here</div>
+    </section>
+
+    <section class="card wide">
+      <h3><span class="ico">📅</span> My Attendance (Last 30 Days)</h3>
+      <button onclick="loadMyAttendance()">Refresh Attendance</button>
+      <div id="my-attendance" class="box">Attendance will show here</div>
+    </section>
+
+    <section class="card">
+      <h3><span class="ico">✏️</span> Request Attendance Correction</h3>
+      <label>Select Date:</label>
+      <input type="date" id="corr-date">
+      <label>Correct Attendance Status:</label>
+      <select id="corr-status">
+        <option value="Present">Present</option>
+        <option value="Late">Late</option>
+        <option value="Half-day">Half-day</option>
+      </select>
+      <textarea id="corr-reason" placeholder="Reason for correction"></textarea>
+      <button onclick="requestCorrection()">Submit Correction</button>
+    </section>
+
+    <section class="card">
+      <h3><span class="ico">💳</span> My Payslips</h3>
+      <button onclick="loadMyPayslips()">View My Payslips</button>
+      <div id="employee-payslips" class="box list"></div>
+    </section>
+
+    <section class="card wide">
+      <h3><span class="ico">📊</span> My Dashboard</h3>
+      <button onclick="loadEmployeeDashboard()">Refresh My Dashboard</button>
+      <div id="emp-kpis" class="box">Click refresh</div>
+    </section>
+
+    <section class="card">
+      <h3><span class="ico">📰</span> Company Announcements</h3>
+      <button onclick="loadAnnouncements('employee')">Refresh Announcements</button>
+      <div id="employee-announcements" class="box list"></div>
+    </section>
+
+    <section class="card">
+      <h3><span class="ico">🔔</span> My Notifications</h3>
+      <button onclick="loadNotifications('employee')">Refresh Notifications</button>
+      <div id="employee-notifications" class="box list"></div>
+    </section>
+  </div>
+</div>
+
+<!-- ===================== ORIGINAL APP LOGIC (unchanged) ===================== -->
+<script>
+    const BASE_URL = 'http://127.0.0.1:5000/api';
+
+    function token() { return localStorage.getItem('token'); }
+
+    function authHeaders() {
+        return {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + token()
+        };
+    }
+
+   function showView(id) {
+
+    // Hide all dashboards
+    document.querySelectorAll('.view').forEach(function(view) {
+        view.classList.remove('active');
+    });
+
+    // Show selected dashboard
+    const selectedView = document.getElementById(id);
+
+    if (selectedView) {
+        selectedView.classList.add('active');
+    } else {
+        console.error('Dashboard not found:', id);
+        alert('Dashboard not found: ' + id);
+    }
+}
+
+    function logout() {
+        localStorage.clear();
+        showView('login-view');
+    }
+
+   async function login() {
+    const email = document.getElementById('login-email').value;
+    const password = document.getElementById('login-password').value;
+
+    try {
+        const res = await fetch(BASE_URL + '/auth/login', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                email: email,
+                password: password
+            })
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+            throw new Error(data.message || 'Login failed');
+        }
+
+        // Save login information
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('role', data.role);
+
+        console.log('Logged in as:', data.role);
+
+        // Redirect according to role
+        if (data.role === 'Admin') {
+            loadAnnouncements('admin');
+             loadNotifications('admin');
+            showView('admin-view');
+             loadAdminDashboard();
+        }
+        else if (data.role === 'HR') {
+            loadAnnouncements('hr');
+            loadNotifications('hr');
+            showView('hr-view');
+            loadPendingLeaves();
+            loadTodayBoard();
+            loadCorrections();
+        }
+        else if (data.role === 'Employee') {
+            loadAnnouncements('employee');
+            loadNotifications('employee');
+            showView('employee-view');
+            loadMyLeaves();
+            loadMyAttendance();
+        }
+        else {
+            alert('Unknown role: ' + data.role);
+            return;
+        }
+
+        alert('Welcome ' + data.role);
+
+    } catch (error) {
+        console.error('LOGIN ERROR:', error);
+        alert('Login Failed: ' + error.message);
+    }
+}
+    async function createHR() {
+        try {
+            const res = await fetch(BASE_URL + '/users/admin/create-hr', {
+                method: 'POST',
+                headers: authHeaders(),
+                body: JSON.stringify({
+                    email: document.getElementById('hr-email').value,
+                    password: document.getElementById('hr-password').value
+                })
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.message);
+            alert('HR Created');
+        } catch (e) {
+            alert('Error: ' + e.message);
+        }
+    }
+
+    async function registerEmployee() {
+        try {
+            const res = await fetch(BASE_URL + '/users/hr/register-employee', {
+                method: 'POST',
+                headers: authHeaders(),
+                body: JSON.stringify({
+                    name: document.getElementById('emp-name').value,
+                    email: document.getElementById('emp-email').value,
+                    department: document.getElementById('emp-dept').value,
+                    designation: document.getElementById('emp-desig').value,
+                    salaryBasic: Number(document.getElementById('emp-salary').value)
+                })
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.message);
+            alert('Employee Created!\nTemp Password: ' + data.loginDetails.temporaryPassword);
+        } catch (e) {
+            alert('Error: ' + e.message);
+        }
+    }
+
+    async function attendance(action) {
+        try {
+            const res = await fetch(BASE_URL + '/attendance/' + action, {
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + token() }
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.message);
+            alert(data.message);
+        } catch (e) {
+            alert('Error: ' + e.message);
+        }
+    }
+
+    async function applyLeave() {
+        try {
+            const res = await fetch(BASE_URL + '/leave/apply', {
+                method: 'POST',
+                headers: authHeaders(),
+                body: JSON.stringify({
+                    type: document.getElementById('leave-type').value,
+                    startDate: document.getElementById('leave-start').value,
+                    endDate: document.getElementById('leave-end').value,
+                    reason: document.getElementById('leave-reason').value
+                })
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.message);
+            alert('Leave submitted (' + (data.leave && data.leave.days) + ' working days)');
+            await loadMyLeaves();
+        } catch (e) {
+            alert('Error: ' + e.message);
+        }
+    }
+
+    async function loadMyLeaves() {
+        const bal = document.getElementById('my-balance');
+        const hist = document.getElementById('my-leaves');
+        if (!bal || !hist) {
+            alert('History boxes missing. You are on an old HTML file. Replace index.html and hard refresh.');
+            return;
+        }
+        hist.innerHTML = 'Loading...';
+        try {
+            const res = await fetch(BASE_URL + '/leave/my', {
+                headers: { 'Authorization': 'Bearer ' + token() }
+            });
+            const text = await res.text();
+            let data;
+            try { data = JSON.parse(text); } catch (e) {
+                throw new Error('Backend did not return JSON. Is /api/leave/my working? ' + text.slice(0, 120));
+            }
+            if (!res.ok) throw new Error(data.message || 'Failed to load leaves');
+
+            const b = data.balance || { Annual: 0, Sick: 0, Casual: 0 };
+            bal.innerHTML = '<b>Balance:</b> Annual ' + b.Annual + ' | Sick ' + b.Sick + ' | Casual ' + b.Casual;
+
+            const rows = data.leaves || [];
+            if (!rows.length) {
+                hist.innerHTML = 'No leave records yet.';
+                return;
+            }
+
+            let html = '<table><tr><th>Type</th><th>From</th><th>To</th><th>Days</th><th>Status</th><th>Reason</th></tr>';
+            rows.forEach(function (l) {
+                const cls = l.status === 'Approved' ? 'ok' : l.status === 'Rejected' ? 'bad' : 'wait';
+                html += '<tr>' +
+                    '<td>' + (l.type || '') + '</td>' +
+                    '<td>' + String(l.startDate || '').slice(0, 10) + '</td>' +
+                    '<td>' + String(l.endDate || '').slice(0, 10) + '</td>' +
+                    '<td>' + (l.days || '') + '</td>' +
+                    '<td class="' + cls + '">' + (l.status || '') + '</td>' +
+                    '<td>' + (l.reason || '') + '</td>' +
+                    '</tr>';
+            });
+            html += '</table>';
+            hist.innerHTML = html;
+        } catch (e) {
+            hist.innerHTML = 'Could not load leaves: ' + e.message;
+            alert('Leave history error: ' + e.message);
+        }
+    }
+
+    async function loadPendingLeaves() {
+        const box = document.getElementById('pending-leaves');
+        try {
+            const res = await fetch(BASE_URL + '/leave/pending', {
+                headers: { 'Authorization': 'Bearer ' + token() }
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.message);
+            if (!data.leaves || !data.leaves.length) {
+                box.innerHTML = '<p>No pending requests</p>';
+                return;
+            }
+            let html = '<table><tr><th>Employee</th><th>Type</th><th>From</th><th>To</th><th>Days</th><th>Reason</th><th>Action</th></tr>';
+            data.leaves.forEach(function (l) {
+                const name = (l.employee_id && l.employee_id.name) ? l.employee_id.name : 'Unknown';
+                html += '<tr>' +
+                    '<td>' + name + '</td>' +
+                    '<td>' + l.type + '</td>' +
+                    '<td>' + String(l.startDate).slice(0, 10) + '</td>' +
+                    '<td>' + String(l.endDate).slice(0, 10) + '</td>' +
+                    '<td>' + l.days + '</td>' +
+                    '<td>' + l.reason + '</td>' +
+                    '<td>' +
+                    '<button onclick="decideLeave(\'' + l._id + '\',\'Approved\')">Approve</button>' +
+                    '<button onclick="decideLeave(\'' + l._id + '\',\'Rejected\')">Reject</button>' +
+                    '</td></tr>';
+            });
+            html += '</table>';
+            box.innerHTML = html;
+        } catch (e) {
+            box.innerHTML = 'Could not load pending leaves: ' + e.message;
+        }
+    }
+
+    async function decideLeave(id, status) {
+        const comment = prompt(status + ' comment (optional):') || '';
+        try {
+            const res = await fetch(BASE_URL + '/leave/approve/' + id, {
+                method: 'PUT',
+                headers: authHeaders(),
+                body: JSON.stringify({ status: status, hrComment: comment })
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.message);
+            alert(data.message);
+            loadPendingLeaves();
+        } catch (e) {
+            alert('Error: ' + e.message);
+        }
+    }
+    
+
+        async function loadMyAttendance() {
+        const box = document.getElementById('my-attendance');
+        try {
+            const res = await fetch(BASE_URL + '/attendance/my', {
+                headers: { 'Authorization': 'Bearer ' + token() }
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.message);
+            const rows = data.records || [];
+            if (!rows.length) {
+                box.innerHTML = 'No attendance records yet.';
+                return;
+            }
+            let html = '<table><tr><th>Date</th><th>Check in</th><th>Check out</th><th>Status</th></tr>';
+            rows.forEach(function (r) {
+                html += '<tr>' +
+                    '<td>' + r.date + '</td>' +
+                    '<td>' + (r.checkInTime ? new Date(r.checkInTime).toLocaleTimeString() : '-') + '</td>' +
+                    '<td>' + (r.checkOutTime ? new Date(r.checkOutTime).toLocaleTimeString() : 'missing') + '</td>' +
+                    '<td>' + r.status + '</td>' +
+                    '</tr>';
+            });
+            html += '</table>';
+            box.innerHTML = html;
+        } catch (e) {
+            box.innerHTML = 'Could not load attendance: ' + e.message;
+        }
+    }
+
+    async function requestCorrection() {
+        try {
+            const res = await fetch(BASE_URL + '/attendance/correction', {
+                method: 'POST',
+                headers: authHeaders(),
+                body: JSON.stringify({
+                    date: document.getElementById('corr-date').value,
+                    requestedStatus: document.getElementById('corr-status').value,
+                    reason: document.getElementById('corr-reason').value
+                })
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.message);
+            alert(data.message);
+        } catch (e) {
+            alert('Error: ' + e.message);
+        }
+    }
+
+    async function loadTodayBoard() {
+        const box = document.getElementById('today-board');
+        try {
+            const res = await fetch(BASE_URL + '/attendance/today', {
+                headers: { 'Authorization': 'Bearer ' + token() }
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.message);
+            const rows = data.records || [];
+            if (!rows.length) {
+                box.innerHTML = 'Nobody checked in yet today.';
+                return;
+            }
+            let html = '<table><tr><th>Employee</th><th>Dept</th><th>Check in</th><th>Check out</th><th>Status</th></tr>';
+            rows.forEach(function (r) {
+                const name = (r.employee_id && r.employee_id.name) ? r.employee_id.name : 'Unknown';
+                const dept = (r.employee_id && r.employee_id.department) ? r.employee_id.department : '';
+                html += '<tr>' +
+                    '<td>' + name + '</td>' +
+                    '<td>' + dept + '</td>' +
+                    '<td>' + (r.checkInTime ? new Date(r.checkInTime).toLocaleTimeString() : '-') + '</td>' +
+                    '<td>' + (r.checkOutTime ? new Date(r.checkOutTime).toLocaleTimeString() : 'missing') + '</td>' +
+                    '<td>' + r.status + '</td>' +
+                    '</tr>';
+            });
+            html += '</table>';
+            box.innerHTML = html;
+        } catch (e) {
+            box.innerHTML = 'Could not load board: ' + e.message;
+        }
+    }
+
+    async function loadCorrections() {
+        const box = document.getElementById('pending-corrections');
+        try {
+            const res = await fetch(BASE_URL + '/attendance/corrections', {
+                headers: { 'Authorization': 'Bearer ' + token() }
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.message);
+            const rows = data.corrections || [];
+            if (!rows.length) {
+                box.innerHTML = 'No pending corrections';
+                return;
+            }
+            let html = '<table><tr><th>Employee</th><th>Date</th><th>Want</th><th>Reason</th><th>Action</th></tr>';
+            rows.forEach(function (c) {
+                const name = (c.employee_id && c.employee_id.name) ? c.employee_id.name : 'Unknown';
+                html += '<tr>' +
+                    '<td>' + name + '</td>' +
+                    '<td>' + c.date + '</td>' +
+                    '<td>' + c.requestedStatus + '</td>' +
+                    '<td>' + c.reason + '</td>' +
+                    '<td>' +
+                    '<button onclick="decideCorrection(\'' + c._id + '\',\'Approved\')">Approve</button>' +
+                    '<button onclick="decideCorrection(\'' + c._id + '\',\'Rejected\')">Reject</button>' +
+                    '</td></tr>';
+            });
+            html += '</table>';
+            box.innerHTML = html;
+        } catch (e) {
+            box.innerHTML = 'Could not load corrections: ' + e.message;
+        }
+    }
+
+    async function decideCorrection(id, status) {
+        const comment = prompt(status + ' comment (optional):') || '';
+        try {
+            const res = await fetch(BASE_URL + '/attendance/corrections/' + id, {
+                method: 'PUT',
+                headers: authHeaders(),
+                body: JSON.stringify({ status: status, hrComment: comment })
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.message);
+            alert(data.message);
+            loadCorrections();
+            loadTodayBoard();
+        } catch (e) {
+            alert('Error: ' + e.message);
+        }
+    }
+
+    async function cancelLeave(id) {
+        if (!confirm('Cancel this leave request?')) return;
+        try {
+            const res = await fetch(BASE_URL + '/leave/cancel/' + id, {
+                method: 'DELETE',
+                headers: { 'Authorization': 'Bearer ' + token() }
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.message);
+            alert(data.message);
+            loadMyLeaves();
+        } catch (e) {
+            alert('Error: ' + e.message);
+        }
+    }
+
+
+// ====================================
+// HR GENERATES PAYROLL
+// ====================================
+
+async function generatePayroll() {
+
+    const month = document.getElementById('payroll-month').value;
+
+    if (!month) {
+        alert('Please select a month');
+        return;
+    }
+
+    try {
+
+        const res = await fetch(BASE_URL + '/payroll/generate', {
+
+            method: 'POST',
+
+            headers: authHeaders(),
+
+            body: JSON.stringify({ month })
+
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+            throw new Error(data.message);
+        }
+
+        alert('Payroll generated successfully!');
+
+        loadPayrollRuns();
+
+    } catch (error) {
+
+        alert('Payroll Error: ' + error.message);
+
+    }
+
+}
+
+
+// ====================================
+// HR VIEWS PAYROLL RUNS
+// ====================================
+
+async function loadPayrollRuns() {
+
+    try {
+
+        const res = await fetch(BASE_URL + '/payroll/runs', {
+            headers: authHeaders()
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) throw new Error(data.message);
+
+        let html = '<h4>Payroll Runs</h4>';
+
+        data.payrolls.forEach(p => {
+
+            html += `
+                <div>
+                    <p>Month: ${p.month}</p>
+                    <p>Status: ${p.status}</p>
+                    <p>Employees: ${p.totalEmployees}</p>
+                    <p>Gross: ${p.totalGross}</p>
+                    <p>Net: ${p.totalNet}</p>
+
+                    <button onclick="viewMonthlyPayslips('${p.month}')">
+                        View Payslips
+                    </button>
+
+                    <hr>
+                </div>
+            `;
+
+        });
+
+        document.getElementById('hr-payroll-runs').innerHTML = html;
+
+    } catch (error) {
+
+        alert(error.message);
+
+    }
+
+}
+
+
+// ====================================
+// ADMIN VIEWS PAYROLL
+// ====================================
+
+async function loadAdminPayroll() {
+
+    try {
+
+        const res = await fetch(BASE_URL + '/payroll/runs', {
+            headers: authHeaders()
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) throw new Error(data.message);
+
+        let html = '';
+
+        data.payrolls.forEach(p => {
+
+            html += `
+                <div>
+                    <h4>${p.month}</h4>
+
+                    <p>Status: ${p.status}</p>
+                    <p>Total Net: ${p.totalNet}</p>
+
+                    ${
+                        p.status === 'Draft'
+                        ? `<button onclick="finalizePayroll('${p._id}')">
+                               Finalize Payroll
+                           </button>`
+                        : '<p>Finalized</p>'
+                    }
+
+                    <hr>
+                </div>
+            `;
+
+        });
+
+        document.getElementById('admin-payroll-runs').innerHTML = html;
+
+    } catch (error) {
+
+        alert(error.message);
+
+    }
+
+}
+
+
+// ====================================
+// ADMIN FINALIZES PAYROLL
+// ====================================
+
+async function finalizePayroll(id) {
+
+    if (!confirm('Finalize payroll? This cannot be undone.')) {
+        return;
+    }
+
+    try {
+
+        const res = await fetch(
+            BASE_URL + '/payroll/finalize/' + id,
+            {
+                method: 'PUT',
+                headers: authHeaders()
+            }
+        );
+
+        const data = await res.json();
+
+        if (!res.ok) throw new Error(data.message);
+
+        alert('Payroll Finalized!');
+
+        loadAdminPayroll();
+
+    } catch (error) {
+
+        alert(error.message);
+
+    }
+
+}
+
+
+// ====================================
+// EMPLOYEE VIEWS PAYSLIPS
+// ====================================
+
+async function loadMyPayslips() {
+
+    try {
+
+        const res = await fetch(
+            BASE_URL + '/payroll/my-payslips',
+            {
+                headers: authHeaders()
+            }
+        );
+
+        const data = await res.json();
+
+        if (!res.ok) throw new Error(data.message);
+
+        let html = '<h4>My Payslips</h4>';
+
+        if (!data.payslips.length) {
+
+            html += '<p>No payslips found.</p>';
+
+        }
+
+        data.payslips.forEach(p => {
+
+            html += `
+                <div>
+                    <h4>${p.month}</h4>
+
+                    <p>Basic Salary: ${p.basicSalary}</p>
+                    <p>Gross Salary: ${p.grossSalary}</p>
+                    <p>Attendance Deduction: ${p.attendanceDeduction}</p>
+                    <p>Tax: ${p.tax}</p>
+                    <p><b>Net Salary: ${p.netSalary}</b></p>
+
+                    <hr>
+                </div>
+            `;
+
+        });
+
+        document.getElementById('employee-payslips').innerHTML = html;
+
+    } catch (error) {
+
+        alert(error.message);
+
+    }
+
+}
+
+
+// ====================================
+// HR VIEWS MONTHLY PAYSLIPS
+// ====================================
+
+async function viewMonthlyPayslips(month) {
+
+    try {
+
+        const res = await fetch(
+            BASE_URL + '/payroll/payslips/' + month,
+            {
+                headers: authHeaders()
+            }
+        );
+
+        const data = await res.json();
+
+        if (!res.ok) throw new Error(data.message);
+
+        let message = 'Payslips for ' + month + '\n\n';
+
+        data.payslips.forEach(p => {
+
+            message +=
+                'Employee: ' + p.employee_id.name +
+                '\nGross: ' + p.grossSalary +
+                '\nNet: ' + p.netSalary +
+                '\n\n';
+
+        });
+
+        alert(message);
+
+    } catch (error) {
+
+        alert(error.message);
+
+    }
+
+}
+
+// ====================================
+// DASHBOARD HELPERS
+// ====================================
+
+function buildDashQuery(prefix) {
+    const from = document.getElementById(prefix + '-from').value;
+    const to = document.getElementById(prefix + '-to').value;
+    const dept = document.getElementById(prefix + '-dept').value;
+    const parts = [];
+    if (from) parts.push('from=' + from);
+    if (to) parts.push('to=' + to);
+    if (dept) parts.push('department=' + encodeURIComponent(dept));
+    return parts.length ? '?' + parts.join('&') : '';
+}
+
+async function fetchDash(path) {
+    const res = await fetch(BASE_URL + path, {
+        headers: { 'Authorization': 'Bearer ' + token() }
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Request failed');
+    return data;
+}
+
+function kpiCard(label, value) {
+    return '<div class="kpi"><div class="kpi-val">' + value + '</div><div>' + label + '</div></div>';
+}
+
+function simpleTable(headers, rows) {
+    let html = '<table><tr>';
+    headers.forEach(h => { html += '<th>' + h + '</th>'; });
+    html += '</tr>';
+    rows.forEach(r => {
+        html += '<tr>';
+        r.forEach(c => { html += '<td>' + c + '</td>'; });
+        html += '</tr>';
+    });
+    return html + '</table>';
+}
+
+function barChart(items, labelKey, valueKey) {
+    if (!items.length) return '<p>No data</p>';
+    const max = Math.max(1, ...items.map(i => Number(i[valueKey]) || 0));
+    let html = '';
+    items.forEach(i => {
+        const v = Number(i[valueKey]) || 0;
+        html += '<div>' + i[labelKey] + ' (' + v + ')</div>';
+        html += '<div class="bar" style="width:' + (v / max * 100) + '%"></div>';
+    });
+    return html;
+}
+
+async function loadDeptOptions(prefix) {
+    try {
+        const data = await fetchDash('/dashboard/departments');
+        const sel = document.getElementById(prefix + '-dept');
+        const current = sel.value;
+        let html = '<option value="">All departments</option>';
+        data.departments.forEach(d => {
+            html += '<option value="' + d + '">' + d + '</option>';
+        });
+        sel.innerHTML = html;
+        sel.value = current;
+    } catch (e) {
+        console.error('Could not load departments:', e.message);
+    }
+}
+
+// ====================================
+// ADMIN DASHBOARD
+// ====================================
+
+async function loadAdminDashboard() {
+    const kpis = document.getElementById('admin-kpis');
+    const charts = document.getElementById('admin-charts');
+    kpis.innerHTML = 'Loading...';
+
+    try {
+        const d = await fetchDash('/dashboard/admin' + buildDashQuery('admin'));
+
+        kpis.innerHTML =
+            '<div class="kpis">' +
+            kpiCard('Headcount', d.headcount) +
+            kpiCard('Exits in period', d.exitsInPeriod) +
+            kpiCard('Attrition %', d.attritionPct) +
+            kpiCard('Avg gross', d.avgGross) +
+            kpiCard('Avg tenure (yrs)', d.avgTenureYears) +
+            kpiCard('Payroll gross (finalized)', d.payrollGross) +
+            kpiCard('Payroll net (finalized)', d.payrollNet) +
+            '</div>';
+
+        charts.innerHTML =
+            '<h4>Headcount by department</h4>' +
+            barChart(d.headcountByDept, 'department', 'headcount') +
+            '<h4>Headcount table</h4>' +
+            simpleTable(
+                ['Department', 'Headcount', 'Avg basic'],
+                d.headcountByDept.map(x => [x.department, x.headcount, x.avgBasic])
+            ) +
+            '<h4>Payroll cost by department (finalized)</h4>' +
+            simpleTable(
+                ['Department', 'Payslips', 'Gross', 'Net'],
+                d.payrollByDept.map(x => [x.department, x.payslips, x.gross, x.net])
+            );
+    } catch (e) {
+        kpis.innerHTML = 'Could not load admin dashboard: ' + e.message;
+    }
+}
+
+// ====================================
+// HR DASHBOARD
+// ====================================
+
+async function loadHrDashboard() {
+    const kpis = document.getElementById('hr-kpis');
+    const charts = document.getElementById('hr-charts');
+    kpis.innerHTML = 'Loading...';
+
+    try {
+        const d = await fetchDash('/dashboard/hr' + buildDashQuery('hr'));
+
+        kpis.innerHTML =
+            '<div class="kpis">' +
+            kpiCard('Headcount', d.headcount) +
+            kpiCard('Present today', d.presentToday) +
+            kpiCard('Late today', d.lateToday) +
+            kpiCard('On leave today', d.onLeaveToday) +
+            kpiCard('Pending leaves', d.pendingLeaves) +
+            kpiCard('Pending corrections', d.pendingCorrections) +
+            '</div>' +
+            '<small>Today KPIs use today\'s date. Tables use the selected date range.</small>';
+
+        charts.innerHTML =
+            '<h4>Attendance trend</h4>' +
+            barChart(d.trend, 'date', 'records') +
+            '<h4>Department absenteeism & late %</h4>' +
+            simpleTable(
+                ['Department', 'Headcount', 'Absent days', 'Absenteeism %', 'Late %', 'Leave days'],
+                d.byDepartment.map(x => [x.department, x.headcount, x.absentDays, x.absenteeismPct, x.latePct, x.leaveDays])
+            ) +
+            '<h4>Leave by type (approved)</h4>' +
+            simpleTable(
+                ['Type', 'Days', 'Requests'],
+                d.leaveByType.map(x => [x.type, x.days, x.requests])
+            ) +
+            '<h4>Top 5 late-comers</h4>' +
+            simpleTable(
+                ['Employee', 'Department', 'Late count'],
+                d.topLate.map(x => [x.name, x.department, x.lateCount])
+            );
+    } catch (e) {
+        kpis.innerHTML = 'Could not load HR dashboard: ' + e.message;
+    }
+}
+
+// ====================================
+// EMPLOYEE DASHBOARD
+// ====================================
+
+async function loadEmployeeDashboard() {
+    const box = document.getElementById('emp-kpis');
+    box.innerHTML = 'Loading...';
+
+    try {
+        const d = await fetchDash('/dashboard/employee');
+
+        const todayText = d.today.checkedOut
+            ? 'Checked out (' + d.today.status + ')'
+            : d.today.checkedIn
+                ? 'Checked in (' + d.today.status + ')'
+                : 'Not checked in';
+
+        const payslipText = d.lastPayslip
+            ? d.lastPayslip.month + ' | Net ' + d.lastPayslip.netSalary
+            : 'No payslip yet';
+
+        box.innerHTML =
+            '<div class="kpis">' +
+            kpiCard('Today', todayText) +
+            kpiCard('Hours this week', d.hoursThisWeek + ' / ' + d.weeklyTargetHours) +
+            kpiCard('Late this month', d.lateCountThisMonth) +
+            kpiCard('Annual left', d.leaveBalance.Annual) +
+            kpiCard('Sick left', d.leaveBalance.Sick) +
+            kpiCard('Casual left', d.leaveBalance.Casual) +
+            kpiCard('Last payslip', payslipText) +
+            '</div>';
+    } catch (e) {
+        box.innerHTML = 'Could not load dashboard: ' + e.message;
+    }
+}
+async function postAnnouncement(role) {
+
+    const title = document.getElementById(role + '-ann-title').value;
+
+    const message = document.getElementById(role + '-ann-message').value;
+
+    try {
+
+        const res = await fetch(
+            BASE_URL + '/comms/announcements',
+            {
+                method: 'POST',
+                headers: authHeaders(),
+                body: JSON.stringify({ title, message })
+            }
+        );
+
+        const data = await res.json();
+
+        if (!res.ok) throw new Error(data.message);
+
+        alert('Announcement Posted!');
+
+        loadAnnouncements(role);
+
+    } catch (error) {
+
+        alert(error.message);
+
+    }
+
+}
+async function loadAnnouncements(role) {
+
+    const box = document.getElementById(role + '-announcements');
+
+    try {
+
+        const res = await fetch(
+            BASE_URL + '/comms/announcements',
+            {
+                headers: authHeaders()
+            }
+        );
+
+        const data = await res.json();
+
+        if (!res.ok) throw new Error(data.message);
+
+        let html = '';
+
+        if (!data.announcements.length) {
+            html = '<p>No announcements yet.</p>';
+        }
+
+        data.announcements.forEach(a => {
+
+            html += `
+                <div>
+                    <h4>${a.title}</h4>
+
+                    <p>${a.message}</p>
+
+                    <small>
+                        Posted by ${a.createdByRole}
+                    </small>
+
+                    <hr>
+                </div>
+            `;
+
+        });
+
+        box.innerHTML = html;
+
+    } catch (error) {
+
+        box.innerHTML = error.message;
+
+    }
+
+}
+async function loadNotifications(role) {
+
+    const box = document.getElementById(role + '-notifications');
+
+    try {
+
+        const res = await fetch(
+            BASE_URL + '/comms/notifications',
+            {
+                headers: authHeaders()
+            }
+        );
+
+        const data = await res.json();
+
+        if (!res.ok) throw new Error(data.message);
+
+        let html = `<h4>Unread: ${data.unreadCount}</h4>`;
+
+        if (!data.notifications.length) {
+            html += '<p>No notifications.</p>';
+        }
+
+        data.notifications.forEach(n => {
+
+            html += `
+                <div>
+                    <b>${n.title}</b>
+
+                    <p>${n.message}</p>
+
+                    <p>Status: ${n.isRead ? 'Read' : 'Unread'}</p>
+
+                    ${
+                        !n.isRead
+                        ? `<button onclick="markNotificationRead('${n._id}', '${role}')">
+                               Mark Read
+                           </button>`
+                        : ''
+                    }
+
+                    <hr>
+                </div>
+            `;
+
+        });
+
+        box.innerHTML = html;
+
+    } catch (error) {
+
+        box.innerHTML = error.message;
+
+    }
+
+}
+async function markNotificationRead(id, role) {
+
+    try {
+
+        const res = await fetch(
+            BASE_URL + '/comms/notifications/' + id + '/read',
+            {
+                method: 'PUT',
+                headers: authHeaders()
+            }
+        );
+
+        const data = await res.json();
+
+        if (!res.ok) throw new Error(data.message);
+
+        loadNotifications(role);
+
+    } catch (error) {
+
+        alert(error.message);
+
+    }
+
+}
+async function loadAuditLogs() {
+
+    const box = document.getElementById('audit-logs');
+
+    try {
+
+        const res = await fetch(
+            BASE_URL + '/comms/audit-logs',
+            {
+                headers: authHeaders()
+            }
+        );
+
+        const data = await res.json();
+
+        if (!res.ok) throw new Error(data.message);
+
+        let html = '';
+
+        if (!data.logs.length) {
+            html = '<p>No audit logs yet.</p>';
+        }
+
+        data.logs.forEach(log => {
+
+            html += `
+                <div>
+                    <p>Actor: ${log.actor?.email || 'Unknown'}</p>
+
+                    <p>Role: ${log.actorRole}</p>
+
+                    <p>Action: ${log.action}</p>
+
+                    <p>Entity: ${log.entity}</p>
+
+                    <p>Date: ${new Date(log.createdAt).toLocaleString()}</p>
+
+                    <hr>
+                </div>
+            `;
+
+        });
+
+        box.innerHTML = html;
+
+    } catch (error) {
+
+        box.innerHTML = error.message;
+
+    }
+
+}
+
+    window.onload = function () {
+
+    const role = localStorage.getItem('role');
+    const token = localStorage.getItem('token');
+
+    if (!token) {
+        showView('login-view');
+        return;
+    }
+
+    if (role === 'Admin') {
+        showView('admin-view');
+        loadAnnouncements('admin');
+loadNotifications('admin');
+    }
+    else if (role === 'HR') {
+        showView('hr-view');
+        loadPendingLeaves();
+        loadTodayBoard();
+        loadCorrections();
+        loadAnnouncements('hr');
+loadNotifications('hr');
+    }
+    else if (role === 'Employee') {
+        showView('employee-view');
+        loadMyLeaves();
+        loadMyAttendance();
+        loadAnnouncements('employee');
+loadNotifications('employee');
+    }
+    else {
+        showView('login-view');
+    }
+};
+</script>
+
+<!-- ===================== 3D / ANIMATION EFFECTS (visual only) ===================== -->
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+
+  // Floating tumbling glass cubes
+  var cubesBox = document.getElementById('cubes');
+  for (var i = 0; i < 14; i++) {
+    var s = 28 + Math.random() * 60;
+    var w = document.createElement('div');
+    w.className = 'cube-wrap';
+    w.style.cssText = 'left:' + (Math.random() * 96) + '%;top:' + (Math.random() * 80) +
+      '%;--s:' + s + 'px;--d:' + (12 + Math.random() * 16) + 's;--f:' + (6 + Math.random() * 8) +
+      's;animation-delay:' + (-Math.random() * 10) + 's';
+    w.innerHTML = '<div class="cube"><i></i><i></i><i></i><i></i><i></i><i></i></div>';
+    cubesBox.appendChild(w);
+  }
+
+  // Floating office props
+  var props = ['💼', '🖥️', '📎', '☕', '📁', '🗂️', '📊', '🕒', '📝', '🖨️', '💡', '🪴'];
+  var propsBox = document.getElementById('props');
+  props.forEach(function (p) {
+    var d = document.createElement('div');
+    d.className = 'prop';
+    d.textContent = p;
+    d.style.cssText = 'left:' + (Math.random() * 94) + '%;top:' + (Math.random() * 88) +
+      '%;font-size:' + (30 + Math.random() * 30) + 'px;--f:' + (8 + Math.random() * 8) +
+      's;animation-delay:' + (-Math.random() * 8) + 's';
+    propsBox.appendChild(d);
+  });
+
+  // Office skyline with blinking windows
+  var sky = document.getElementById('skyline');
+  for (var b = 0; b < 22; b++) {
+    var bl = document.createElement('div');
+    bl.className = 'bld';
+    bl.style.cssText = 'height:' + (80 + Math.random() * 190) + 'px;width:' + (38 + Math.random() * 52) +
+      'px;animation-delay:' + (-Math.random() * 6) + 's';
+    sky.appendChild(bl);
+  }
+
+  // Spinning 3D logo cubes in the top bars
+  document.querySelectorAll('.logo3d').forEach(function (l) {
+    l.innerHTML = '<i></i><i></i><i></i><i></i><i></i><i></i>';
+  });
+
+  // Stagger card entrance
+  document.querySelectorAll('.grid').forEach(function (g) {
+    Array.prototype.forEach.call(g.children, function (c, idx) { c.style.setProperty('--n', idx); });
+  });
+
+  // Card tilt on mouse move
+  document.querySelectorAll('.card').forEach(function (c) {
+    c.addEventListener('mousemove', function (e) {
+      var r = c.getBoundingClientRect();
+      var x = (e.clientX - r.left) / r.width - 0.5;
+      var y = (e.clientY - r.top) / r.height - 0.5;
+      var m = c.classList.contains('wide') ? 1.5 : 6;
+      c.style.setProperty('--rx', (-y * m) + 'deg');
+      c.style.setProperty('--ry', (x * m) + 'deg');
+    });
+    c.addEventListener('mouseleave', function () {
+      c.style.setProperty('--rx', '0deg');
+      c.style.setProperty('--ry', '0deg');
+    });
+  });
+
+  // Global parallax (background layers + hero cube follow the mouse)
+  var scene = document.getElementById('scene');
+  var hero = document.getElementById('hero-inner');
+  document.addEventListener('mousemove', function (e) {
+    var nx = e.clientX / window.innerWidth - 0.5;
+    var ny = e.clientY / window.innerHeight - 0.5;
+    scene.style.setProperty('--mx', nx.toFixed(3));
+    scene.style.setProperty('--my', ny.toFixed(3));
+    if (hero) {
+      hero.style.setProperty('--ry', (nx * 50) + 'deg');
+      hero.style.setProperty('--rx', (-ny * 30) + 'deg');
+    }
+  });
+});
+</script>
+</body>
+</html>
